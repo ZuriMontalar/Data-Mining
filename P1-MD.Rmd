@@ -1,0 +1,157 @@
+---
+title: "Práctica 1 - MD"
+author: "Zuri Montalar"
+date: "15/12/2019"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Primero preparamos los datos:
+```{r preparo datos}
+load("~/BIOESTADÍSTICA máster/Estadística/Minería de datos/Prácticas -Minería de datos/Práctica 1/datosp1.RData") # Cargamos el banco de datos
+rownames(datosp1)<-datosp1[,1] # Nombramos cada fila con el valor que tenía la misma en la primera columna 
+datosp1<-datosp1[,-1] # Eliminamos la primera columna
+names(datosp1)<-c("PobT","TMI","TN","EVH","EVM","PTH","PTM","P25H","P25M","P45H","P45M","PAP","PC","PI","PS","PEA","TCVVt","pCVVn") # Renombramos las variables, las acortamos
+
+```
+
+## 1. Análisis descriptivo univariante del banco de datos.
+
+Teníamos 19 variables (columnas) en el banco de datos, y la primera de ellas, PROVINCIA, era cualitativa y la hemos eliminado haciéndola formar parte del nombre de cada una de las filas. El resto de variables son todas cuantitativas continuas, excepto PobT, que es cuantitativa discreta. Sin embargo, como toma un amplio rango de valores diferentes (incluso puede que ninguno de los valores de esta vatiable se repita) trabajaremos con esta variable utilizando las mismas técnicas que para el resto, como si no fuese discreta.
+
+Entonces, visualizamos para cada columna del banco de datos redondeando a 3 decimales los vectores de medias, desviaciones típicas, coeficientes de curtosis y de asimetría:
+
+```{r vectores m,sd,k,as}
+round(apply(datosp1,2,mean),3) # Vector de medias
+round(apply(datosp1,2,sd),3) # Vector de desviaciones típicas
+library(e1071)
+round(apply(datosp1,2,kurtosis),3) # Vector de coeficientes de curtosis
+round(apply(datosp1,2,skewness),3) # Vector de coeficientes de asimetría
+```
+
+Observando los valores de media y desviación típica, en principio destaca la variable PobT, cuya desviación típica es muy elevada (más incluso que la media), además de estar en una escala mucho mayor al resto de variables.
+
+En cuanto a los coeficientes de curtosis, vemos que en numerosas variables son cercanos a 0 y tienen por tanto un apuntamiento similar al de una distribución Normal. Los más cercanos a 0 son PTH (porcentaje total de paro en hombres en el último trimestre de 2017) y  PS (porcentaje del paro total que se corresponde con personas cuyo empleo anterior se enmarcaba en Servicios).
+
+Los coeficientes de asimetría no toman grandes valores (en valor absoluto) por lo que las distribuciones parecen bastante simétricas. Todos los coeficientes son poritivos excepto EVH y EVM (la esperanza de vida al nacer tanto de hombres como de mujeres en 2016).
+
+
+A continuación, para visulaizar mejor los datos, hacemos los diagrams de cajas y bigotes de cada variable. Clasificamos entre variables con escala distinta para poder distinguir mejor los gráficos:
+
+```{r ej1.boxplots}
+par(mfrow=c(2,2))
+boxplot(datosp1[,1],xlab=colnames(datosp1)[1])
+boxplot(datosp1[,c(4,5)])
+boxplot(datosp1[,c(15,18)])
+boxplot(datosp1[,17],xlab=colnames(datosp1)[17])
+par(mfrow=c(1,1))
+boxplot(datosp1[,c(2,3,6:14,16)],las=2)
+
+```
+
+Observamos que todos los valores de EVH son inferiores a los de EVM, por lo que se podría pensar que la esperanza de vida al nacer en hombres es menor que la de mujeres.
+
+También vemos diferencias entre el paro total según el sexo (PTH y PTM), teniendo las mujeres en general mayor porcentaje además de presentar mayor variabilidad (en este caso dada por mayor rango y rango intercuartílico).
+Sin embargo, el porcentaje de paro en jóvenes es bastante similar tanto en hombres como en mujeres (ver P25H y P25M), así como en hombres mayores de 45 años (P45H). La diferencia se pronuncia más en las mujeres mayores de 45 años (P45M), lo cual podría deberse a la cultura (cada vez menor pero todavía persistente) del cuidado de las mismas al hogar y familia.
+
+Distinguiendo el paro por sectores (PAP,PC,PI y PS), el de servicios (PS) es mucho mayor a los otros tres. Esto puede ser debido a que en la economía española el sector servicios tiene un peso bastante elevado con respecto al resto de sectores.
+
+
+Creamos los histogramas de cada variable para ver así cómo se distribuyen los datos:
+```{r ej1.hist}
+par(mfrow=c(3,6))
+for (i in 1:length(datosp1)) hist(datosp1[,i],main=colnames(datosp1)[i],xlab=NULL,col=8) # Histogramas
+par(mfrow=c(1,1))
+```
+
+## 2. Análisis exploratorio numérico y gráfico que permita conocer la relación entre las variables.
+
+Para conocer la relación entre las variables, podemos hallar las matriz de varianzas-covarianzas, en cuya diagonal tendremos la varianza de cada variable:
+
+```{r ej2. cov-cor}
+round(cov(datosp1), 2) # Matriz de varianzas-covarianzas
+```
+
+Sin embargo, con esta matriz los datos son complejos de interpretar. Visualizamos entonces gráficamente la matriz de correlación:
+```{r ej2. cor,eval=FALSE,echo=FALSE}
+round(cor(datosp1), 2) # Matriz de correlaciones
+library(Hmisc)
+round(rcorr(as.matrix(datosp1))$P, 4) #P-valores de las correlaciones
+```
+
+```{r ej2. grafico corr}
+library(corrplot)
+corrplot.mixed(cor(datosp1),lower="ellipse",upper="number",number.cex=0.7,tl.cex=0.5,tl.col=1) # Representación gráfica de la matriz de correlación
+
+```
+
+Observamos que las variables con mayor correlación lineal positiva entre ellas son las correspondientes al porcentaje de paro tanto total, como en menores de 25 años como en mayores de 45, para ambos sexos, tal como cabría esperar. Es especialmente elevada (mayor que 0.95) en el caso de porcentaje de paro en mujeres y hombres menores de 25 años (P25M y P25H); así como cada porcentaje de paro total con el de mayores de 45 años según el sexo (PTH con P45H, y PTM con P45M).
+Además, se da una elevada correlación lineal positiva (de 0.78) entre las variables de esperanza de vida al nacer de hombres y de mujeres (EVH y EVM, respectivamente).
+En lo que respecta a fuerte correlación lineal negativa, las mayores obtenidas se dan entre las variables de paro que acabamos de comentar y la esperanza de vida al nacer tanto en hombres como en mujeres.
+
+También tenemos una relativamente considerable correlación lineal negativa entre PAP Y PS, de modo que generalmente en las provincias epañolas aumentaba el paro en el sector de agricultura y pesca cuando disminuía en el sector servicios.
+
+## 3. Análisis exploratorio numérico y gráfico que permita conocer la relación entre individuos.
+Para analizar la relación entre individuos realizamos un gráfico de estrellas:
+```{r ej3. grafico estrellas}
+stars(datosp1, key.loc = c(13, 1), draw.segments = TRUE,cex=0.45,main='Relación entre individuos') # Gráfico de estrellas
+```
+
+De esta forma podemos visualizar las similitudes entre las variables de todas las provincias simultáneamente.
+
+Por ejemplo, vemos que el gráfico correspondiente a Ceuta es similiar al de Melilla en lo que refiere a las variables del porcentaje de paro, que en general es mayor en estas en comparación al resto de provincias españolas.
+
+También podemos observar que la esperanza de vida al nacer tanto en hombers como en mujeres suelen tener valores más elevados que el resto de variables en general en las provincias del centro y norte de España, y sin embargo valores inferiores en Ceuta, Melilla o provincias andaluzas como por ejemplo Málaga, Sevilla, Huelva o Cádiz.
+
+Las Palmas y Santa Cruz de Tenerife tienen bastante simulitud entre ellas, lo cual concuerda con lo que cabía esperar por su cercanía y condiciones en comparación al resto del país. También vemos similitudes entre estas dos y Illes Balears, sobre todo en cuanto al porcentaje de paro en el sector servicios y de construcción, lo que también tiene sentido debido a la actividad turística de las islas.
+
+Por otro lado, Madrid y Barcelona se parecen sobre todo por la variable de la población total, que destaca sobre el resto, pues son las dos provincias más pobladas del país.
+
+## 4. Estudio de casos atípicos (outliers)
+Para estudiar los casos atípicos desde un punto de vista multivariante representamos gráficamente la distancia de Mahalanobis de cada provincia y ver cuáles superan el límite razonable establecido según la cantidad de variables:
+
+```{r ej4. dist ,outliers}
+ma<-mahalanobis(datosp1,apply(datosp1,2,mean,na.rm=TRUE),cov(datosp1,use ="na.or.complete"))
+k<-length(datosp1) #Número de variables
+Lim<-k+3*sqrt(k*2) #Límite distancia de Mahalanobis
+plot(ma,pch=20,ylim=c(0,max(ma,Lim)),ylab="Distancia de Mahalanobis")
+text(ma,rownames(datosp1),pos=4,cex=0.7)
+abline(h=Lim,col='red')
+```
+
+Tenemos que Melilla supera el límite establecido (aunque por muy poco) y la siguen de cerca Madrid y Ceuta, por lo que las tres provincias podrían revisarse para saber si sus variables tienen o no datos atípicos.
+En el caso de Ceuta y Melilla, no es de extrañar que destaquen y sean diferentes al resto de provincias debido a sus características.
+En el caso de Madrid, al ser la capital también podría ser justificable que tenga valores de variables diferentes al resto de provincias.
+
+Si queremos saber para cada una de las variables qué provincias son outlayers podemos hacer un diagrama de caja y bigotes para cada variable e identificar los outlayers:
+
+```{r ej4. outliers1}
+library(car)
+Boxplot(scale(datosp1),las=2,pos=4)
+```
+
+Vemos que sólo hay dos outliers inferiores: Palencia, en la variable de la tasa de mortalidad infantil; y Melilla en la variable de la esperanza de vida al nacer en mujeres; sin embargo, son más abundantes los outliers superiores, 
+
+Para visualizar mejor los nombres de las provincias que serían en estos diagramas outliers superiores, podemos crear una lista (pues estará formada por vectores de distintos tamaños):
+
+```{r ej4. outliers2}
+
+sup<-c(3,2,2,0,0,1,1,1,2,0,0,1,0,0,0,2,2,1) # vector de cantidad de outliers superiores de cada variable
+lsup<-dim(datosp1)[1]-sup+1
+o_sup<-list()
+for (j in 1:length(datosp1))
+  if (sup[j]>0)
+  o_sup[[j]]<-rownames(datosp1) [order(datosp1[,j])[lsup[j]:dim(datosp1)[1]]]
+  o_sup
+```
+
+La mayoría de los outliers superiores pertenecen a las provincias de Melilla o Ceuta.
+
+Destacan Huesca, en la variable de tasa de mortalidad infantil; Huelva, en la de porcentaje de paro en agricultura y pesca; además de Alicante y Málaga en la variable de la tasa de compraventa de viviendas total.
+
+El caso de Madrid, que con la distancia de Mahalanobis estaba cerca del límite establecido, con los diagramas de cajas y bigotes vemos que sólo destaca en la variable de la población total, que es mucho mayor que en el resto de provincias.

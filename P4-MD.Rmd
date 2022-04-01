@@ -1,0 +1,102 @@
+---
+title: 'Práctica 4: Multidimensional Scaling'
+author: "Zuri Montalar"
+date: "27/01/2020"
+output:
+  html_document: default
+---
+
+
+```{r global_options, include=FALSE}
+ knitr::opts_chunk$set(warning=FALSE)
+```
+
+```{r directorio}
+setwd("~/BIOESTADÍSTICA máster/Estadística/Minería de datos/Prácticas -Minería de datos/Práctica 4")
+```
+
+## Tarea 1: 
+<div style="text-align: justify">
+Primero cargamos los datos
+```{r cargo_datos}
+load("C:/Users/amont/Documents/BIOESTADÍSTICA máster/Estadística/Minería de datos/Prácticas -Minería de datos/Práctica 4/distCiudadesUsa.RData")
+```
+
+<!-- Tenemos una matriz distancias -->
+<div style="text-align: justify">
+### 1. Realiza un MDS métrico sobre esta matriz de distancias entre ciudades de EEUU y representa en dos dimensiones las distancias originales. ¿Qué te parece esta representación? ¿Tiene relación con la disposición real de las ciudades sobre el mapa de EEUU?
+<div style="text-align: justify">
+Utilizamos la función cmdscale para realizar el MDS métrico. Como queremos representar en dos dimensiones, determinamos k=2.
+
+```{r cmd_metrico}
+mds_metrico<-cmdscale(distciud,k=2,eig=TRUE,add=FALSE)
+plot(mds_metrico$points,ylim=c(-750,600),xlim=c(-1300,1550))
+text(mds_metrico$points[, 1], mds_metrico$points[, 2], dimnames(mds_metrico$points)[[1]],pos=1,cex=0.8)
+```
+<div style="text-align: justify">
+
+Si lo rotamos, vemos que sí, que lo obtenido coincide aproximadamente con lo que veríamos en un mapa. Es lo que cabía esperar, pues buscamos con este método que las distancias entre los objetos que acabamos de generar coincidan en la mayor medida posible con las de los objetos según la matriz inicial de distancias de la que partíamos.
+
+
+### 2. Calcula una medida de la bondad del ajuste sobre el análisis realizado.
+<div style="text-align: justify">
+Obtenemos la bondad de ajuste:
+```{r bondad ajuste}
+mds_metrico$GOF
+```
+
+Vemos que tenemos ambas bondades de ajuste (considerando los valores propios negativos en valor absoluto, la primera; y considerando los valores propios como ceros, la segunda) son muy similares, aunque no iguales, y muy cercanas a 1. Esto significa que hay valores propios negativos, pero que hay pocos y/o son de poca magnitud. Entonces, con dos dimensiones tenemos una bondad de ajuste bastante buena (casi perfecta, con bondad de ajuste mayor a 0.99).
+
+## Tarea 2: 
+
+Primero cargamos los datos
+```{r cargo datos}
+load("C:/Users/amont/Documents/BIOESTADÍSTICA máster/Estadística/Minería de datos/Prácticas -Minería de datos/Práctica 4/estudiopsico.RData")
+```
+<div style="text-align: justify">
+### a) Realiza un MDS no métrico sobre los datos indicados y representa gráficamente (en dos dimensiones) a partir de los resultados obtenidos a cada uno de los 12 profesores con su codificación (etiquetas).
+
+Para realizar el MDS no métrico, utilizamos la función isoMDS de la librería MASS:
+```{r mds:noMetrico}
+library(MASS)
+mds_NOmetrico<-isoMDS(DisimPsico)
+```
+<div style="text-align: justify">
+Representamos gráficamente en dos dimensiones los resultados obtenidos:
+
+```{r grafico noMetrico}
+plot(mds_NOmetrico$points,type="p",ylim=c(-0.6,0.5))
+text(mds_NOmetrico$points,labels,cex=0.7,pos=1:3)
+```
+<div style="text-align: justify">
+
+### b) A la vista del gráfico anterior y sabiendo cuál es la interpretación de la codificación utilizada para cada profesor ¿encuentas explicación a los ejes representados?
+<div style="text-align: justify">
+En la primera dimensión, podríamos extraer como común que en un extremo (en este caso el inferior) el tercer número es un 2 (que corresponde a que esos profesores tienen menos experiencia docente), y en el otro extremo con valor 1 (corresondiente a profesores con mucha experiencia docente). Como única excepción, tenemos que el profesor al que se le asigna "121" tiene valores de esa primera dimensión inferiores a "312" y "112").
+
+Sin embargo, no apreciamos con tanta claridad cómo se comporta la segunda dimensión según los valores de los tres factores.
+Para evaluar mejor esa relación, representamos el gráfico según los factores.
+
+Expresamos el primer factor (especialidad) con el número correspondiente como tal, el segundo factor (categoría docente) con el color, y el tercero (experiencia docente) con la forma. Para ello, usamos la función substr para poder escoger el número correspondiente a cada factor en labels:
+
+```{r grafico noMetrico colores}
+plot(mds_NOmetrico$points,ylim=c(-0.6,0.5),pch=as.numeric(substr(labels,3,3)))
+text(mds_NOmetrico$points,substr(labels,1,1),cex=0.9,pos=1:3,col=substr(labels,2,2))
+```
+<div style="text-align: justify">
+Vemos color rojo (en este caso se refiere al nivel no principal del factor categoría docente) en ambos extremos de la segunda dimensión, lo que indica que la categoría docente de los profesores no determina de forma directa esta segunda dimensión.
+En el caso de la especialidad, también vemos los números 1, 2 y 3 (correspondientes a "química", "lengua inglesa" e "idioma", respectivamente) también dispersos por el eje de ordenadas, por lo que tampoco detectamos una influencia clara de este factor especialidad en la composición de la segunda dimensión.
+
+<div style="text-align: justify">
+### c) Analiza y explica la bondad del ajuste que hemos obtenido tras la aplicación de esta técnica a estos datos.
+
+Obtenemos la bondad de ajuste:
+```{r stress}
+mds_NOmetrico$stress
+```
+<div style="text-align: justify">
+La función STRESS refleja las diferencias entre concepto abstracto de proximidad y el concepto geométrico de distancia. En este caso obtenemos un STRESS de aproximadamente 0.0628, que Kruskal sugiere como una bondad de ajueste entre buena y aceptable.
+
+
+
+.

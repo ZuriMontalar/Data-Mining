@@ -1,0 +1,216 @@
+---
+title: 'Práctica 2: Análisis de componentes principales'
+author: "Zuri Montalar"
+date: "22/12/2019"
+output:
+  html_document: default
+---
+
+<!-- #<div style="text-align: justify">) -->
+
+
+## Tarea 1
+<div style="text-align: justify"> 
+Primero creamos los datos:
+```{r preparodaots}
+set.seed(seed=21121)
+x1=rnorm(100)
+set.seed(seed=21122)
+x2=rnorm(100,sd=2)
+set.seed(seed=21123)
+x3=rnorm(100,sd=0.5)
+dat.t1<-data.frame(x1,x2,x3)
+```
+
+
+```{r grafico despersion, fig.align='center'}
+pairs(dat.t1) # Gráfico de dispersión
+cor(dat.t1)
+```
+
+En los gráficos de dispersión observamos para cada par de variables una nube de puntos más o menos distribuida homogéneamente en el plano que nos lleva a pensar que no hay correlación entre las variables.
+Efectivamente, si vemos la matriz de correlación, tenemos que la correlación entre cualquier par de variables es prácticamente 0 (alrededor de 0.05).
+
+
+```{r componentes principales}
+xx1<-princomp(dat.t1) # Análisis de componentes principales
+```
+
+
+### 1. ¿Qué proporción de varianza explica la primera componente principal? ¿y la segunda? ¿y la tercera?
+```{r 1.1}
+summary(xx1)
+```
+La primera componente principal explica una proporción de la varianza de 0.756578; la segunda de 0.2049008 y la tercera de 0.03852124.
+
+### 2. Interpreta cómo se forma (con qué variables originales) la primera componente principal, y la segunda y la tercera.
+```{r 1.2pes}
+round(xx1$loadings, 3)
+```
+Para saber cómo se forman las componentes principales, hallamos los pesos. No tenemos valor en los casos en los que los pesos son muy pequeños y por tanto no influyen prácticamente. Entonces, tenemos que las componentes principales las constituyen casi en su totalidad una de las variables: la primera componente, x2; la segunda componente x1; y la tercera componente, x3.
+
+### 3. ¿Qué te parecen los resultados obtenidos? ¿Por qué crees que las componentes principales se han construido de esta manera?
+Lo que nos interesaría sería tener combinaciones de las varaibles en las componentes principales, pero en este caso no tenemos combinación de las variables en las componentes.
+Esto se debe a que cómo hemos construido las varaibles: hemos creado valores aleatorios de tres normales con la misma media (100) y distintas varianzas. De modo que hay muy poca correlación entre las variables (de hecho, la poca variabilidad que tienen las varaibles es por azar).
+Entonces, como las variables están incorreladas, las componentes principales son prácticamente las mismas que las variables principales, pero en otro orden (ahora tenemos la primera x2 porque es la que tenía mayor variabilidad, luego x1 y por último x3 que es la que tenía menor variabilidad).
+
+## Tarea 2
+<div style="text-align: justify"> 
+
+```{r cargo datos}
+load("~/BIOESTADÍSTICA máster/Estadística/Minería de datos/Prácticas -Minería de datos/Práctica 2/datos_prac2.RData")
+dat.t2.2<-dat.t2
+rownames(dat.t2.2)<-dat.t2.2[,4]
+dat.t2.2<-dat.t2.2[,-1*(1:4)] # sólo variables cuantitativas
+```
+
+### a). Calcula las desviaciones típicas de las variables cuantitativas del banco de datos y responde si a la vista de lo que observas debemos realizar el análisis de componentes principales con la matriz de varianzas-covarianzas o con la de correlaciones.
+
+```{r desv1}
+round(apply(dat.t2.2,2,sd),2) # Desviación típica de cada variable
+```
+
+Las mayores desviaciones típicas son las correspondientes a las variables que contienen todas las causas de mortalidad posible tanto para hombres como para mujeres, pero esa mayor variabilidad viene dada por precisamente la naturaleza de esa variable, por cómo se ha definido y tener en cuenta todas las causas de mortalidad. Como no están descritas todas las varianles de todas las causas de mortalidad, esas dos variables que las contienen todas no son suma del resto, sino que contienen información de causas que no tenemos en el banco de datos. Por tanto, no sería adecuado eliminar estas dos variables y, como tienen significativamente mayor variabilidad que el resto, en este caso seía más adecuado utilizar la matriz de correlaciones para realizar el análisis de compontentes principales.
+
+### b). Realiza un Análisis de Componentes Principales sobre este banco de datos y responde las siguientes preguntas:
+
+```{r acp2}
+xx2<-princomp(dat.t2.2,cor=TRUE) # Análisis de componentes principales
+```
+
+#### 1. ¿Qué porcentaje de varianza del banco de datos original explica la primera componente principal? ¿Y la segunda?
+
+```{r 2.1}
+summary(xx2)
+```
+
+Observando la proporción de varianza, tenemos que la primera componente principal explica aproximadamente el 47.81% de la varianza; y la segunda componente principale el 13.85% de la varianza.
+
+#### 2. ¿Con cuántas componentes principales nos deberíamos quedar si queremos mantener al menos el 80% de la varianza del banco de datos orignal?
+
+Si queremos saber con cuántas componentes principales nos deberíamos quedar para mantener al menos el 80% de la varianza, miramos en qué compontente la proporción acumulada supera 0.8, y tenemos que quedándonos con las cinco primeras componentes principales, explicaríamos aproximadamente el 85.22% de la varianza del banco de datos original.
+
+#### 3. Intenta interpretar de forma breve el significado de la primera componente principal.
+
+Hallamos los pesos para interpretar el significado de las componentes principales:
+
+```{r 2.3pesos}
+round(xx2$loadings, 2) # Pesos
+```
+
+La primera componente principal se interpreta como un factor de tamaño ya que tiene todos los pesos del mismo signo.
+Entonces, esta primera componente tendrá en un extremo aquellas provincias en las que haya mayores valores en general en todas las variables de causas de mortalidad, sobre todo en las variables de todas las causas de mortalidad, las de enfermedades cardiovasculares, e incluso la de enfermedad isquémica de corazón, todas tanto para hombres como para mujeres, ya que presentan pesos mayores.
+Por el contrario, al otro extremo de la primera componente principal tendremos las provincias que menores valores tienen todas las variables de causas de mortalidad.
+
+#### 4. Intenta interpretar de forma breve el significado de la segunda componente principal.
+
+La segunda componente principal se interpreta como un factor de forma ya que tiene pesos de signo positivo y negativo. No importa cuáles son positivos y cuáles negativos, sólo si son de signo igual o distinto.
+En este caso, podríamos decir que la segunda componente principal tendrá mayor valor cuanto mayores sean los valores de las variables con pesos positivos (enfermedades cardiovasculares y tumores malignos, tanto en hombres como en mujeres) y menores sean los de peso negativo (diabetes y enfermedades del aparato respiratorio, tanto en hombres como en mujeres); y al otro extremo, tendremos menor valor de esta segunda componente principal si tenenmos valores elevados de las variables negativas y menores de las positivas.
+
+#### 5. Representa todas las provincias en un gráfico según las dos primeras componentes principales y comenta el resultado, resaltando las que tengan algún comportamiento que te llame la atención (por ejemplo, las más extremas en alguna de las dos primeras componentes).
+
+<!--```{r graficos5}
+par(mfrow=c(1,2))
+plot(xx2$scores[,1],xx2$scores[,2],type='n')
+text(xx2$scores[, 1], xx2$scores[, 2], substr(dat.t2[, 4], 1, 3))
+biplot(xx2)
+par(mfrow=c(1,1))
+```-->
+
+```{r grafico5, fig.align='center'}
+plot(xx2$scores[,1:2],type='n',main='Provincias según las 2 primeras componentes principales')
+text(xx2$scores[, 1:2], substr(dat.t2[, 4], 1, 3),cex=0.7)
+```
+
+Vemos que en un extremo de la primera componente principal se encuentra Ceuta junto a provincias generalmente andaluzas como Sevilla, Cádiz, Huelva y Jaén, siendo entonces esas las provincias que mayores valores presentan en general en todas las variables de causa de mortalidad.
+
+En cuanto a la segunda componente principal, en un extremo tenemos Sevilla, y en el otro Melilla. Podemos ver los valores de las variables en esas dos provincias:
+
+```{r valoresvariables}
+dat.t2.2[rownames(dat.t2.2)=='Sevilla',] 
+dat.t2.2[rownames(dat.t2.2)=='Melilla',]
+```
+
+Tal como esperábamos, tenemos en el caso de Sevilla en comparación con Melilla valores más elevados en las variables de causas de mortalidad de enfermedades cardiovasculares y tumores malignos, tanto en hombres como en mujeres; y más bajos en las causas de mortalidad de diabetes y enfermedades del aparato respiratorio, tanto en hombres como en mujeres. Destacaría la diferencia entre ambas provincias de la variable de diabetes en hombres, pues es superior al tripe en Melilla que en Sevilla.
+ 
+
+## Tarea 3
+<div style="text-align: justify"> 
+Preparamos el banco de datos:
+
+```{r prep t3}
+load("~/BIOESTADÍSTICA máster/Estadística/Minería de datos/Prácticas -Minería de datos/Práctica 2/EPF2.RData")
+rownames(EPF)<-EPF[,1] # Nombramos cada fila con el valor que tenía la misma en la primera columna 
+EPF<-EPF[,-1] # Eliminamos la primera columna
+names(EPF)<-c("Alim","VyC","Viv","MobD","GS","Trans","EyC","TyO","otros")
+```
+
+
+
+### 1. Explica si consideras más adecuado hacer un Análisis de Componentes Principales basado en la matriz de covarianza de los datos o basado en su matriz de correlaciones.
+
+```{r sd3.1}
+round(apply(EPF,2,sd),2) # Desviación típica de cada variable
+```
+
+Pese a tener desviaciones típicas bastante diferentes, todas las variables están medidas en la misma escala y tratan todas de gastos. Entonces, en este caso es interesante darle mayor o menor importancia a las variables según si tienen mayor o menor variabilidad, por lo que utilizaremos la matriz de varianzas-covarianzas para realizar el análisis de componentes principales.
+
+### 2. Explora cuántas componentes principales necesitas para explicar el 80% de la varianza original del banco de datos.
+
+```{r 2.3acp}
+xx3<-princomp(EPF) # Análisis de componentes principales
+summary(xx3)
+```
+
+Si queremos saber con cuántas componentes principales nos deberíamos quedar para explicar al menos el 80% de la varianza, miramos en qué compontente la proporción acumulada supera 0.8, y tenemos que quedándonos con las dos primeras componentes principales explicaríamos aproximadamente el 85.13% de la varianza del banco de datos original.
+
+### 3. Explora e intenta interpretar las dos primeras componentes.
+
+Hallamos los pesos para interpretar el significado de las componentes principales:
+
+```{r 3.3}
+round(xx3$loadings, 2) [,(1:2)]# Pesos de las 2 primeras componentes principales
+```
+
+En la primera componente principal, tenemos que todos los pesos son del mismo signo, y por tanto se trata de un factor de tamaño.
+Entonces, tendremos en un extremo de la primera componente aquellas provincias cuyos individuos más dinero gastan en todas las variables en general (sobre todo en vivienda, que tiene el mayor peso, aunque es lógico que lo tenga porque es el gasto más caro de entre las descritos); y en el otro extremo las provincias cuyos individuos menos dinero gastan en las distintas variables. Tal vez podríamos pensar por tanto en una posible relación entre esta primera componente principal con la riqueza de cada provincia, en el sentido de que las personas pueden dedicar mayor presupuesto en general en todas las variables si el coste de vida es caro en esa provincia.
+
+Sin embargo, en la segunda componente principal tenemos pesos tanto positivos como negativos, por lo que es un factor de forma.
+Tendremos entonces en un extremo de la segunda componente principal aquellas provincias con valores de gasto elevados de las variables con peso positivo (alimentación,vestido, calzado y transporte principalmente) y valores pequeños de gasto en las variables con peso negativo (vivienda, turismo y ocio). Por el contrario, al otro extremo de esta componente principal estarán las provincias con valores de gasto pequeños de las variables con peso positivo y valores elevados de gasto en las variables con peso negativo.
+
+### 4. Realiza un gráfico en el que se muestren los individuos (provincias) según las dos primeras componentes principales.
+
+<!--```{r grafico3.4.}
+par(mfrow=c(1,2))
+plot(xx3$scores[,1],xx3$scores[,2],type='n')
+text(xx3$scores[, 1], xx3$scores[, 2],rownames(EPF))
+biplot(xx3)
+par(mfrow=c(1,1))
+```-->
+
+```{r grafico3.4, fig.align='center'}
+plot(xx3$scores[,1:2],type='n',main='Provincias según las 2 primeras componentes principales')
+text(xx3$scores[, 1:2],substr(rownames(EPF), 1, 3),cex=0.7)
+```
+
+Evaluando las provincias que estarían en los extremos en las dos primeras componentes principales, tenemos por ejemplo que Madrid tiene valor elevado en la primera componente principal pero pequeño en la segunda, Badajoz tiene valor pequeño en las dos primeras componentes principales, y Lugo y Pontevedra tienen valores centrales con respecto al resto de provincias de la primera componente principal y valores elevados de la segunda componente principal.
+
+### 5. Caracteriza el comportamiento de las provincias de Madrid y Barcelona en función de estas componentes principales.
+
+<!-- ```{r 3.5scores}
+sc<-xx3$scores[,(1:2)]
+sc_mad<-sc[rownames(sc)=='Madrid'] # scores Madrid
+sc_mad
+sc_bar<-sc[rownames(sc)=='Barcelona'] # scores Barcelona
+sc_bar
+
+EPF[rownames(EPF)=='Madrid',] 
+EPF[rownames(EPF)=='Barcelona',] 
+EPF[rownames(EPF)==c('Barcelona','Navarra','Salamanca','Valencia'),] # esto no funicona :(
+```-->
+Observando dónde se encuentras las provincias de Madrid y Barcelona en el gráfico anterior, tenemos que:
+
+Madrid tiene valor de los scores extremos en las dos primeras componentes principales en comparación al resto de provincias españolas: tiene un valor máximo en la primera componente principal, lo que podemos interpretar como que es la provincia española que más gasto presenta (la provincia cuyos individuos encuestados dicen utilizar mayor presupuesto en los diferentes gastos), lo cual no nos extraña si pensamos que esta provincia puede tener un coste de vida superior al del resto de provincias del país; y tiene un valor mínimo en la segunda componente principal, así que en principio pensaríamos que tiene poco gasto en variables como alimentación,vestido, calzado y transporte, y mucho gasto en variables como vivienda, turismo y ocio.
+
+Por otro lado, Barcelona tiene también un score elevado en la primera componente principal (sólo superado por Navarra y Madrid), por lo que podríamos pensar también que la provincia tiene un coste de vida elevado (utilizando por ello las personas de esta provincia mayor presupuesto en general en todos los gastos evaluados); y un score de la segunda componente principal aproximadamente medio en relación al resto de provincias (ni muy alto ni muy bajo).
+

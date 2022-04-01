@@ -1,0 +1,472 @@
+---
+title: 'Práctica 3: Análisis de agrupamientos'
+author: "Zuri Montalar"
+date: "20/01/2020"
+output:
+  html_document: default
+---
+
+<!-- #<div style="text-align: justify">) -->
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE)
+```
+
+
+## Tarea 1: Análisis cluster a partir de datos simulados
+<div style="text-align: justify"> 
+
+Primero cargamos los datos:
+
+```{r preparo_datos}
+load("C:/Users/amont/Documents/BIOESTADÍSTICA máster/Estadística/Minería de datos/Prácticas -Minería de datos/Práctica 3/datosTarea1.rData")
+
+```
+
+Representamos los cuatro bancos de datos gráficamente.
+```{r representar}
+plot(dat1,col=cr)
+plot(dat2,col=cr)
+plot(dat3,col=cr)
+plot(dat4,col=cr)
+
+```
+<div style="text-align: justify"> 
+
+El el primer caso (con los datos dat1) vemos que los tres grupos están claramente diferenciados. Sin embargo, en dat2 está un poco menos clara la distinción exacta entre tres grupos; y esta falta de claridad en la distinción se acentúa en los datos dat3, y todavía más en dat4.
+
+Podemos aplicar el algoritmo de agrupación de k-medias a cada uno de los bancos de datos y así ver en cada conjunto de datos cuántos grupos podrían darse. Nos fijaremos en el número de clusters para el que la suma de cuadrados (SCDG) sea menor:
+
+```{r aplico kmedias}
+
+scdg1<-c()
+for (i in 1:10) {
+  km1<-kmeans(x=dat1,centers=i,nstart=50)
+  scdg1[i]<-km1$tot.withinss
+}
+  
+scdg2<-c()
+for (i in 1:10) {
+  km2<-kmeans(x=dat2,centers=i,nstart=50)
+  scdg2[i]<-km2$tot.withinss
+}
+
+scdg3<-c()
+for (i in 1:10) {
+  km3<-kmeans(x=dat3,centers=i,nstart=50)
+  scdg3[i]<-km3$tot.withinss
+}
+
+scdg4<-c()
+for (i in 1:10) {
+  km4<-kmeans(x=dat4,centers=i,nstart=50)
+  scdg4[i]<-km4$tot.withinss
+}
+
+# Representamos gráficamente la suma de cuadrados:
+par(mfrow=c(2,2))
+plot(scdg1,type="b")
+plot(scdg2,type="b")
+plot(scdg3,type="b")
+plot(scdg4,type="b")
+par(mfrow=c(1,1))
+
+```
+<div style="text-align: justify"> 
+Si comparamos las representaciones gráficas de la suma de cuadrados, vemos que en el primer banco de datos claramente se distinguen 3 grupos, pues entre el tercer y cuarto cluster no vemos prácticamente diferencia en la suma de cuadrados (visualmente vemos los puntos 3 y 4 del primer gráfico unidos por una línea prácticamente horizontal).
+Sin embargo, en el segundo banco de datos vemos que hay una pequeña pendiente negativa entre el tercer y cuarto cluster, que es tan pequeña que continuaríamos eligiendo 3 como número de clusters óptimo, pero los grupos estarían un poco menos evidentes que en el caso anterior.
+En el tercer banco de datos, esa pendiente es un poco más acusada que en el segundo; y en el cuarto banco de datos la pendiente negativa es todavía mayor. Esto implica que la suma de cuadrados sí es menor considerando 4 clusters en vez de 3 (no como ocurría en el primer banco de datos, que eran prácticamente iguales) y, por tanto, habría que considerar si la diferencia entre la suma de cuadrados es lo suficientemente importante o no como para plantearse cambiar otro número de clusters distinto de 3. De hecho, si consideramos 3 clusters en el cuarto banco de datos, habrá individuos que se agrupen en uno u otro según el método utilizado, ya que no es tan obvia la separación en tres grupos en este caso.
+
+
+## Tarea 2: Análisis cluster de datos mixtos guiado
+
+Primero cargamos los datos:
+
+```{r cargo}
+load("C:/Users/amont/Documents/BIOESTADÍSTICA máster/Estadística/Minería de datos/Prácticas -Minería de datos/Práctica 3/ICU.RData")
+
+```
+<div style="text-align: justify"> 
+Ahora preparamos los datos para trabajar con ellos de una forma más cómoda y adecuada:
+Por un lado, la variable ID no la tenemos que usar para realizar el análisis de agrupamiento porque es el identificador de pacientes, así que la eliminamos.
+Por otro lado, hay que asegurarse de que las variables están definidas con el tipo adecuado.
+
+```{r preparo2}
+ICU<-ICU[,-1]
+str(ICU)
+```
+<div style="text-align: justify"> 
+Cambiamos entonces los tipos necesarios para tener los siguientes:
+
+-Survive: categótica, binaria asimétrica
+
+-Age: cuantitativas
+
+-AgeGroup:categórica, ordinal
+
+-Sex: categótica, binaria simétrica
+
+-Infection: categótica, binaria asimétrica
+
+-SysBP: cuantitativas
+
+-Pulse: cuantitativas
+
+-Emergency: categótica, binaria asimétrica
+
+
+Para ello, en principio tenemos todas las variables como enteros, y vamos a cambiar a factores las variables que no son cuantitativas.
+
+```{r preparoo}
+ICU$Survive<-factor(ICU$Survive)
+ICU$AgeGroup<-factor(ICU$AgeGroup,ordered=TRUE)
+ICU$Sex<-factor(ICU$Sex)
+ICU$Infection<-factor(ICU$Infection)
+ICU$Emergency<-factor(ICU$Emergency)
+
+```
+<div style="text-align: justify"> 
+Cargamos el paquete "cluster" y utilizamos la función daisy para calcular la matriz de distancias, indicando en el argumento type si las variables binarias que tenemos son simétricas o asimétricas. Como tenemos varaibles de tipos distintos, utilizamos la distancia Gower.
+
+```{r distancias}
+library(cluster)
+distancias<-daisy(ICU,metric="gower",stand = FALSE,type=list(asymm=c(1,5,8),symm=4))
+
+```
+<div style="text-align: justify"> 
+Realizamos un análisis cluster jerárquico utilizando la matriz de distancias calculada y mediante el método “Ward.2”. Lo representamos mediante un dendograma:
+
+```{r cluster}
+clustering<-hclust(distancias, method = "ward.D2")
+plot(clustering,hang=-1,cex=0.45)
+```
+<div style="text-align: justify"> 
+Viendo el dendograma, me parecería razonable utilizar 4, 5, o  incluso 6 clusters.
+
+A continuación representamos el dendograma con 6 clusters.
+
+```{r 6clusters}
+plot(clustering,hang=-1,cex=0.45)
+rect.hclust(clustering,k=6,border="red")
+```
+<div style="text-align: justify"> 
+Creamos una Variable que indique a qué grupo (de los 6) pertenece cada individuo, y realizamos un análisis descriptivo de las variables según el cluster al que se han asignado.
+Para las variables categóricas, creamos data frames de modo que en las columnas queda reflejada la cantidad de individuos al que se le asigna uno u otro valor (0 ó 1 en las binarias, y de 1 a 3 en el caso de la variable del grupo de edad), y cada fila indica a cuál de los 6 clusters se ha asignado. Podemos visualizar también los valores con diagramas de barras.
+
+Para las variables cuantitativas haremos diagramas de cajas y bigotes según el grupo asignado:
+
+```{r grupos6}
+cut6<-cutree(clustering,k=6) 
+table(cut6)  #esto indica la cantidad de individuos que componen cada uno de los 6 grupos creados
+```
+
+
+<!-- # alternativa tabla -->
+<!-- var1<-data.frame() -->
+<!-- for (i in (1:6)) -->
+<!--      for (j in (1:2)) -->
+<!--        var1[i,j]<-as.integer(table(ICU[cut6==i,1]))[j] -->
+<!-- colnames(var1)<-(0:1) -->
+<!-- var1 -->
+<!-- barplot(t(as.matrix(var1)),legend=(colnames(var1))) -->
+
+Análisis descriptivo variable 1: Survive
+```{r var1}
+var1<-table(cut6,ICU$Survive)
+var1
+barplot(t(var1))
+
+```
+<div style="text-align: justify"> 
+Tenemos que todos los individuos asignados al cluster 1, tienen asignado el valor 0 en la variable Survive. Es decir, que ningún individuo asignado a este cluster sobrevivió al ingreso hospitalario.
+Sin embargo, todos o casi todos los individuos asignados a los clusters 2, 3, 4 y 6 sí sobrevivieron al ingreso hospitalario. Por otro lado tenemos que en el cluster  no apreciamos una clara distinción de los individuos según esta variable de superviviencia.
+
+
+Análisis descriptivo variable 2: Age
+
+<!-- ```{r var2} -->
+<!-- par(mfrow=c(1,6)) -->
+<!--  for (i in (1:6)) -->
+<!--    boxplot(ICU[cut6==i,2],xlab=i,ylim=c(15,90)) -->
+<!-- par(mfrow=c(1,1)) -->
+<!-- ``` -->
+
+```{r var2}
+boxplot(ICU$Age~cut6)
+```
+<div style="text-align: justify"> 
+Podríamos decir que en el cluster 2 están los individuos más jóvenes, mientras que en los clusters 1, 4 y 6 se agrupan los individuos de mayor edad (también en el cluster 5, aunque presenta mayor variabilidad). Sin embargo, en el cluster 3 no apreciamos una clara distinción de los individuos según esta variable edad.
+
+
+Análisis descriptivo variable 3: AgeGroup
+```{r var3}
+var3<-table(cut6,ICU$AgeGroup)
+var3
+barplot(t(var3))
+```
+<div style="text-align: justify"> 
+Por un lado, no apreciamos claras evidencias de distinción entre los grupos de edad 2 y 3 (es decir si los individuos tienen entre 50 y 69 años o son mayores de 69) según el cluster. Por otro lado, tenemos que en el cluster 2 todos los individuos pertenecen al grupo de edad 1 (son todos jóvenes, menores de 50 años), y en los clusters 1 y 6 todos los individuos pertenecen a los grupos de edad 2 o 3, tal como habíamos visto en el análisis de la variable anterior, la edad.
+
+
+Análisis descriptivo variable 4: Sex
+```{r var4}
+var4<-table(cut6,ICU$Sex)
+var4
+barplot(t(var4))
+```
+<div style="text-align: justify"> 
+En el caso de la variable sexo, tenemos que todos los individuos de los clusters 1, 2 y 6 tienen el sexo asignado como "1" (es decir, son mujeres); mientras que todos los individuos de los otros clusters (3, 4 y 5) son hombres, a excepción de un individuo del cluster 4 , que es una mujer.
+
+
+Análisis descriptivo variable 5: Inflection
+```{r var5}
+var5<-table(cut6,ICU$Infection)
+var5
+barplot(t(var5))
+```
+<div style="text-align: justify"> 
+En el caso de la variable Infection, tenemos que en ninguno de los individuos agrupados en el cluster 3 existen indicios de infección (valor 0 en esta variable), mientras que todos los individuos del cluster 5 presentan indicio de infección.
+En el resto de clusters no se aprecia con claridad esa diferencia en esta variable según los mismos, teniendo que, o bien la catidad de individuos con o sin infección es similar (como en el cluster 1, habiendo 8 individuos con indicios de infección y 7 sin ellos), o bien la cantidad de individuos sin indicios de infección es superior.
+
+Análisis descriptivo variable 6: SysBP
+```{r var6}
+boxplot(ICU$SysBP~cut6)
+```
+<div style="text-align: justify"> 
+No observamos grandes diferencias en la variable de presión arterial sistólica según los clusters. La mediana de esta variable de los individuos de cada cluster es similar. Podríamos destacar en todo caso que los clusters 1 y 2 son, respectivamente, los que mayor y menor variabilidad presentan (vista esta como el rango intercuartílico).
+
+
+Análisis descriptivo variable 7: Pulse
+```{r var7}
+boxplot(ICU$Pulse~cut6)
+```
+<div style="text-align: justify"> 
+Según la variable de frecuancia cardíaca tampoco podemos hacer una importante distinción de individuos por clusters.
+
+
+Análisis descriptivo variable 8: Emergency
+```{r var8}
+var8<-table(cut6,ICU$Emergency)
+var8
+barplot(t(var8))
+```
+<div style="text-align: justify"> 
+Según la variable Emergency, tenemos que todos ingresos de los individuos asignados a los clusters 1, 2, 3 y 5 fueron por urgencias (excepto un individuo del cluster 2); mientras que todos ingresos de los individuos asignados al cluster 4 fuero programados. Sin embargo, en el cluster 6 no está tan clara esta distinción por la variable emergencia, pues hay asignados 13 individuos con ingreso programado y 27 con ingreso por urgencias. 
+
+## Tarea 3
+
+### 1
+Primero cargamos y exploramos los datos:
+
+```{r prep_data}
+load("C:/Users/amont/Documents/BIOESTADÍSTICA máster/Estadística/Minería de datos/Prácticas -Minería de datos/Práctica 3/dat.t3.RData")
+str(dat.t3)
+summary(dat.t3)
+round(cor(dat.t3),2)
+```
+<div style="text-align: justify"> 
+Tenemos fuerte correlación entre algunas varaibles (las más destacables son correlaciones positivas entre el porcentaje de viviendas que disponen de acceso a Internet y el que tiene conexión de Banda Ancha; también entre el porcentaje de viviendas con algún tipo de ordenador y el que tiene acceso a Internet; y entre el porcentaje de viviendas con algún tipo de ordenador y el que  con conexión de Banda Ancha).
+
+Pienso que no tenemos que estandarizar los datos porque ya están todos entre 0 y 100 al tratarse de porcentajes, y con ello además se tiene ya en cuenta que viven distintas cantidades de perosnas en las distintas Comunidades Autónomas. También creo que en este caso podría ser relevante tener en cuenta las posibles diferencias entre las variables tanto en los posibles valores que toman como es sus variabilidades.
+
+### 2
+<div style="text-align: justify"> 
+Realizamos un análisis de outliers mediante la distancia de Mahalanobis. Para ello, suponemos normalidad multivariante.
+
+```{r outliers}
+ma<-mahalanobis(dat.t3,apply(dat.t3,2,mean,na.rm=TRUE),cov(dat.t3,use ="na.or.complete"))
+k<-length(dat.t3) #Número de variables
+Lim<-k+3*sqrt(k*2) #Límite distancia de Mahalanobis
+plot(ma,pch=20,ylim=c(0,max(ma,Lim)),ylab="Distancia de Mahalanobis")
+text(ma,rownames(dat.t3),pos=4,cex=0.7)
+abline(h=Lim,col='red')
+```
+<div style="text-align: justify"> 
+Vemos que para ninguna CCAA la distancia de Mahalanobis supera el límite establecido, por lo que no consideraríamos ningún outlier. Las más cercanas al mismo son Ceuta, Melilla, Murcia y Canarias. Podemos ver si estas quedan reflejadas en alguna variable individualmente y en cuál/es si es el caso, mediante diagramas de cajas y bigotes:
+
+```{r outliers-bp}
+library(car)
+Boxplot(dat.t3)
+```
+<div style="text-align: justify"> 
+Tendríamos entonces que Murcia es un outlayer inferior en la variable del porcentaje de viviendas con teléfono fijo, y Ceuta y Canarias lo son en le de porcentaje de viviendas con teléfono móvil.
+
+### 3
+<div style="text-align: justify"> 
+Realizamos un análisis de agrupamiento jerárquico. Para ello, como hemos decidido no estandarizar las variables, puede que sea más óptimo utilizar la distancia de Mahalanobis. Además, hemos visto que entre algunas varaibles hay mucha correlación, y en estos casos la distancia euclídea puede magnificar la distancia entre observaciones usando las variables con información redundante. La distancia de mahalanobis entonces podría funcionar mejor en este caso. Podemos hacer el agrupamieto con ambas distancias y comparar:
+
+<!-- Para ver los tipos de distancias que hay disponibles en R: -->
+<!-- #install.packages("philentropy") -->
+<!-- library(philentropy) -->
+<!-- getDistMethods() -->
+
+```{r grupos}
+# Función para calcular la distancia de Mahalanobis:
+d_mahalanobis <- function(x,cx=NULL) {
+  if(is.null(cx)) cx<-cov(x,use ="na.or.complete")
+  out<-lapply(1:nrow(x),function(i) {
+    mahalanobis(x=x,center=do.call("c",x[i,]),cov=cx)
+  })
+  return(as.dist(do.call("rbind",out)))
+}
+
+# Con la distancia de Mahalanobis
+d_ma<-d_mahalanobis(dat.t3)
+
+clust.ward.ma<-hclust(d_ma,method="ward.D2")
+clust.single.ma<-hclust(d_ma,method="single")
+clust.complete.ma<-hclust(d_ma,method="complete")
+clust.average.ma<-hclust(d_ma,method="average")
+plot(clust.ward.ma)
+plot(clust.single.ma)
+plot(clust.complete.ma)
+plot(clust.average.ma)
+
+# Utilizando la distancia Euclídea
+d_eu<-dist(dat.t3,method="euclidean")
+clust.ward<-hclust(d_eu,method="ward.D2")
+clust.single<-hclust(d_eu,method="single")
+clust.complete<-hclust(d_eu,method="complete")
+clust.average<-hclust(d_eu,method="average")
+plot(clust.ward)
+plot(clust.single)
+plot(clust.complete)
+plot(clust.average)
+```
+<div style="text-align: justify"> 
+Sí podemos detectar cierta estabilidad en las agrupaciones de las CCAA con los 4 métodos.
+
+En el caso de utilizar la distancia euclídea, en general podemos ver como patrón común que se dan 2 grupos con 2 subgrupos cada uno: I. Baleares, Navarra, y País Vasco formarían uno de los subgrupos que, junto al subgrupo de Aragón, Cantabria y Catalunya serían uno de los grupos. En el otro estarían por una parte Castilla la Mancha y/o Extremadura, Comunitat Valenciana y Andalucía; y por otra parte Asturias, La Rioja, Castilla y León.
+
+Sin embargo, en el caso de utilizar la distancia de Mahalanobis, en general podríamos distinguir como patrón común que se dan también distintos subgrupos de dos o tres CCAA, que son: Madrid y Navarra; Asturias y Galicia;Comunitat Valenciana, Andalucía y Castilla la Mancha; Aragón y La Rioja; y Cantabria, Catalunya y León.
+
+En ambos casos, las CCAA no mencionadas hasta ahora (como Ceuta, Canarias o Murcia) corresponden a aquellas que o bien se agrupan en solitario, o bien cambian de grupo o subgrupo según el método utilizado.
+
+
+A continuación obtenemos las correlaciones cofenéticas producidas en cada algoritmo:
+
+```{r cof}
+# Correlación cofenética
+
+cor_ma<-c()
+cl_ma<-list(clust.ward.ma,clust.single.ma,clust.complete.ma,clust.average.ma)
+for (i in 1:length(cl_ma)) cor_ma[i]<-cor(d_ma,cophenetic(cl_ma[[i]]))
+cor_ma # utilizando la distancia de Mahalanobis
+
+cor_eu<-c()
+cl_eu<-list(clust.ward,clust.single,clust.complete,clust.average)
+for (i in 1:length(cl_eu)) cor_eu[i]<-cor(d_eu,cophenetic(cl_eu[[i]]))
+cor_eu # utilizando la distancia euclídea
+```
+<div style="text-align: justify"> 
+Las correlaciones obtenidas corresponden a los métodos “ward.D2”,“single”,“complete” y “average”, respectivamente.
+
+Tenemos que, utilizando la distancia Mahalanobis, las correlaciones cofenéticas están aproximadamente entre 0.63 en el peor de los casos (con el algoritmo "complete") y 0.84 en el mejor (el de "average").
+
+Sin embargo, utilizando la distancia euclídea, las correlaciones cofenéticas están aproximadamente entre 0.67 en el peor de los casos (con el algoritmo "single") y 0.8 en el mejor (el de "average").
+
+En ambos casos coinciden por tanto que el mejor método (o al menos con el que se obtiene una mayor correlación cofenética) es el de "average".
+
+### 4
+<div style="text-align: justify"> 
+Utilizamos la función NbClust para conocer cuántos índices proponen como óptimas qué cantidades de clusters utilizando el método "average":
+
+<!-- Con la distancia pearson: -->
+<!-- # install.packages("factoextra") -->
+<!-- library(factoextra) -->
+<!-- indices_pe<-NbClust(dat.t3,get_dist(dat.t3,method="pearson"),distance=NULL,method="average") -->
+
+```{r nbclust}
+# install.packages("NbClust")
+library(NbClust)
+indices_eu<-NbClust(dat.t3,d_eu,distance=NULL,method="average") # utilizando la distancia euclídea
+indices_ma<-NbClust(dat.t3,d_ma,distance=NULL,method="average") # utilizando la distancia de Mahalanobis
+
+```
+<div style="text-align: justify"> 
+Entonces, tenemos que en este caso, que utilizando la distancia euclídea  y el método "average", la mejor opción para nuestros datos sería agrupar en 3 clusters, pues es la cantidad de grupos que más índices proponen como óptima.
+
+Viendo los índices con la distancia Mahalanobis no tenemos una cantidad de índices que destaquen en exceso sobre el resto, siendo los mayores 5 y 7 índices, que proponen como óptimos 2 y 15 clusters respectivamente, lo cual no concuerda con lo esperado (en el sentido de que recomienda utilizar el mínimo número de clusters mayor que 1 o prácticamente el máximo, dado que tenemos 19 Comunidades Autónomas). Por tanto, pensamos que es este caso es mejor utilizar la distancia euclídea.
+
+Consideramos entonces 3 clusters y calculamos el centroide de cada grupo, utilizando la distancia euclídea:
+
+### 5
+``` {r clusters5}
+clusters<-indices_eu$Best.partition
+centroides<-data.frame()
+nc<-3 # número de clusters óptimo obtenido
+for (i in 1:nc) centroides[i,1:length(dat.t3)]<-apply(dat.t3[clusters==i,],2,mean)
+```
+<div style="text-align: justify"> 
+Hacemos un análisis de agrupamiento con el algoritmo k-medias y los centroides que acabamos de calcular:
+
+```{r agrupamiento}
+agrup5<-kmeans(dat.t3,centers=centroides,nstart=30)
+```
+<div style="text-align: justify"> 
+La composición de los grupos de ahora utilizando el algoritmo k-medias viene dado por agrup5$cluster, y el formado en el apartado anterior lo tenemos almacenado en "clusters". Podemos averiguar si hay alguna variación en la composición de los grupos:
+```{r comp}
+agrup5$cluster==clusters
+```
+<div style="text-align: justify"> 
+Vemos que todas las CCAA están agrupadas en el mismo cluster en ambos casos, excepto 3 de ellas: Andalucía, Comunitat Valenciana y Extremadura.
+
+### 6
+<div style="text-align: justify"> 
+A continuación realizamos un análisis exploratorio a partir de la composición de clusters obtenida en el apartado anterior.
+<!-- Para ello, primero creamos una nueva columna en el banco de datos que indique a qué grupo pertenece cada CCAA. -->
+
+<!-- ```{r analisis} -->
+<!-- dat.t3$cluster<-agrup5$cluster -->
+<!-- ``` -->
+
+<!-- Podemos entonces realizar los diagramas de cajas y bigotes por grupos -->
+
+<!-- <!-- esto mejor no lo pongo que no lo entiendo: --> 
+<!-- <!-- pairs(dat.t3[,-c(1,6)],col=dat.t3[,6]) --> 
+
+
+<!-- ```{r b-w} -->
+<!-- par(mfrow=c(2,3)) -->
+<!-- for (i in 1:5) boxplot(dat.t3[,i]~dat.t3[,6]) -->
+<!-- par(mfrow=c(1,1)) -->
+<!-- ``` -->
+
+
+Para ello, realizamos un análisis de componentes principales en dos diemnsiones.
+
+Del mismo modo que hemos decidido no estandarizar las variables, pensamos que en este caso es interesante darle mayor o menor importancia a las variables según si tienen mayor o menor variabilidad, por lo que utilizaremos la matriz de varianzas-covarianzas para realizar el análisis de componentes principales.
+
+``` {r acp}
+acp<-princomp(dat.t3,cor=FALSE)
+summary(acp)
+```
+<div style="text-align: justify"> 
+Vemos que con las dos primeras componentes principales explicamos un poco más del 95% de la varianza. 
+Visualizamos a continuación los pesos de esas dos primeras componentes principales para entenderlas mejor:
+
+``` {r acp-pesos}
+round(acp$loadings, 3)[,(1:2)]
+```
+```
+<div style="text-align: justify"> 
+En la primera componente principal, tenemos que todos los pesos son del mismo signo, y por tanto se trata de un factor de tamaño. Entonces, tendremos en un extremo de la primera componente aquellas CCAA que presenten mayores porcentajes en todas las variables en general (a destacar el porcentaje de viviendas con teléfono fijo, pues tiene el mayor peso); y en el otro extremo las CCAA que tengan en general menores porcentaje en todas las variables (siendo el de viviendas con teléfono fijo el que menos influye).
+En la segunda componente principal tenemos pesos de distinto signo, por lo que es un factor de forma. Más concretamente, todas las variables tienen pesos positivos excepto la del porcentaje de viviendas con teléfono fijo. Entonces, esta segunda componente principal tendrá en un extremo las CCAA con valores elevados en las variables positivas y pequeño en la negativa; y al otro extremo tendrá las CCAA con valor elevado del porcentaje de viviendas con teléfono fijo y valores pequeños en el resto de variables.
+
+
+Visualizamos entonces las CCAA según las dos primeras componentes principales y las distinguimos según el cluster al que pertenecen:
+
+``` {r acp-plot}
+plot(acp$scores[,1:2],pch=agrup5$cluster,col=agrup5$cluster)
+```
+<div style="text-align: justify"> 
+En uno de los clusters (representado con cruces verdes) se encuentran las CCAA que tienen valores pequeños en la primera componente principal; en otro de los clusters (círculos negros) están agrupadas las CCAA con valores medios en la primera componente principal y bajos en la segunda; y al otro cluster (triángulos rojo) pertenecen las CCAA con los mayores valores en la primera componente principal (aunque lo de valores más grandes y más pequeños en este caso sería mejor interpretarlo simplemente como valores extremos).
+
+Con clusplot: (OJO, QUE O ME SALE IGUAL)
+``` {r acp-clusplot}
+library(cluster)
+clusplot(dat.t3,agrup5$cluster,color=TRUE,shade=TRUE,labels=2,lines=0,cor=FALSE)
+```
+
+
+
+
